@@ -1,0 +1,14 @@
+com/hindu/horoscope/helper/Utilities.class
+com/hindu/horoscope/model/response/ZodiacModel.class
+com/hindu/horoscope/model/response/TodayPrediction.class
+com/hindu/horoscope/model/response/PredictionCategory.class
+com/hindu/horoscope/model/response/WeeklyPrediction.class
+com/hindu/horoscope/model/externalResponse/APIResponse.class
+com/hindu/horoscope/function/HoroscopeHandler.class
+com/hindu/horoscope/model/externalResponse/CategoryResponse.class
+com/hindu/horoscope/helper/JsonConverter.class
+com/hindu/horoscope/model/externalResponse/BotResponse.class
+com/hindu/horoscope/helper/HoroscopeConstants.class
+com/hindu/horoscope/model/externalResponse/PredictionResponse.class
+com/hindu/horoscope/service/ReadHoroscopeDataServiceImpl.class
+com/hindu/horoscope/helper/ZodiacEnum.class

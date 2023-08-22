@@ -1,0 +1,14 @@
+/Applications/BackEndProjectCode/horoscope_function/src/main/java/com/hindu/horoscope/service/ReadHoroscopeDataServiceImpl.java
+/Applications/BackEndProjectCode/horoscope_function/src/main/java/com/hindu/horoscope/helper/ZodiacEnum.java
+/Applications/BackEndProjectCode/horoscope_function/src/main/java/com/hindu/horoscope/model/response/ZodiacModel.java
+/Applications/BackEndProjectCode/horoscope_function/src/main/java/com/hindu/horoscope/model/response/TodayPrediction.java
+/Applications/BackEndProjectCode/horoscope_function/src/main/java/com/hindu/horoscope/model/externalResponse/CategoryResponse.java
+/Applications/BackEndProjectCode/horoscope_function/src/main/java/com/hindu/horoscope/model/response/PredictionCategory.java
+/Applications/BackEndProjectCode/horoscope_function/src/main/java/com/hindu/horoscope/helper/JsonConverter.java
+/Applications/BackEndProjectCode/horoscope_function/src/main/java/com/hindu/horoscope/model/externalResponse/APIResponse.java
+/Applications/BackEndProjectCode/horoscope_function/src/main/java/com/hindu/horoscope/model/response/WeeklyPrediction.java
+/Applications/BackEndProjectCode/horoscope_function/src/main/java/com/hindu/horoscope/function/HoroscopeHandler.java
+/Applications/BackEndProjectCode/horoscope_function/src/main/java/com/hindu/horoscope/model/externalResponse/BotResponse.java
+/Applications/BackEndProjectCode/horoscope_function/src/main/java/com/hindu/horoscope/helper/HoroscopeConstants.java
+/Applications/BackEndProjectCode/horoscope_function/src/main/java/com/hindu/horoscope/model/externalResponse/PredictionResponse.java
+/Applications/BackEndProjectCode/horoscope_function/src/main/java/com/hindu/horoscope/helper/Utilities.java

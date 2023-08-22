@@ -22,6 +22,17 @@ import java.util.Locale;
 public class Utilities {
 
     /**
+     * This method returns the Local Date in DD/MM/YYYY format
+     *
+     * @return
+     */
+    public static String getLocalDateInString() {
+        LocalDate currentDate = LocalDate.now();
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+        return currentDate.format(formatter);
+    }
+
+    /**
      * Returns the Start Date and End Date for provieded week number
      *
      * @param weekNumber
