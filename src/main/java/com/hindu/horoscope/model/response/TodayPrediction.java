@@ -1,4 +1,4 @@
-package com.hindu.horoscope.model;
+package com.hindu.horoscope.model.response;
 
 import lombok.Data;
 
