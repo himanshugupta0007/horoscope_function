@@ -2,6 +2,7 @@ package com.hindu.horoscope.service;
 
 import com.amazonaws.services.lambda.runtime.LambdaLogger;
 import com.hindu.horoscope.helper.HoroscopeConstants;
+import com.hindu.horoscope.helper.JsonConverter;
 import com.hindu.horoscope.helper.Utilities;
 import com.hindu.horoscope.helper.ZodiacEnum;
 import com.hindu.horoscope.model.externalResponse.APIResponse;
@@ -10,6 +11,7 @@ import org.apache.hc.client5.http.classic.methods.HttpGet;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.core5.http.HttpStatus;
 import org.apache.hc.core5.http.ParseException;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.apache.hc.core5.net.URIBuilder;
@@ -35,7 +37,7 @@ public class ReadHoroscopeDataServiceImpl {
      *
      * @return
      */
-    public static boolean readAndSaveZodiacPredictions(LambdaLogger logger) {
+    public boolean readAndSaveZodiacPredictions (LambdaLogger logger) {
         logger.log("Reading Environment Variables" + "\n");
         List<String> locales =
                 Utilities.getListFromVariables(System.getenv(HoroscopeConstants.ENVIRONMENT_VARIABLE_LOCALES));
@@ -48,9 +50,8 @@ public class ReadHoroscopeDataServiceImpl {
                 String baseURL = System.getenv(HoroscopeConstants.ENVIRONMENT_VARIABLE_BASE_URL);
                 for (ZodiacEnum zodiacEnum : ZodiacEnum.values()) {
                     try {
-                        logger.log(
-                                "Reading Predictions for Zodiac: " + zodiacEnum.getName() + "for Locale: " + locale +
-                                        "\n");
+                        logger.log("Reading Predictions for Zodiac: " + zodiacEnum.getName() + "for Locale: " + locale +
+                                           "\n");
                         APIResponse dailyResponse =
                                 fetchDailyPredictionForZodiac(zodiacEnum.getValue(), apiKey, baseURL, locale);
                     } catch (Exception ex) {
@@ -72,33 +73,33 @@ public class ReadHoroscopeDataServiceImpl {
      * @param locale
      * @return
      */
-    private static APIResponse fetchDailyPredictionForZodiac(int zodiacValue, String apiKey, String baseURL,
-                                                             String locale) throws
-                                                                            URISyntaxException {
+    private APIResponse fetchDailyPredictionForZodiac (int zodiacValue, String apiKey, String baseURL,
+            String locale) throws URISyntaxException, IOException, ParseException {
         HttpGet httpGet = new HttpGet(baseURL);
-        URI uri = new URIBuilder(httpGet.getUri())
-                .addParameter(HoroscopeConstants.REQUEST_PARAM_TYPE, HoroscopeConstants.REQUEST_PARAM_TYPE_VALUE)
+        URI uri = new URIBuilder(httpGet.getUri()).addParameter(HoroscopeConstants.REQUEST_PARAM_TYPE,
+                                                                HoroscopeConstants.REQUEST_PARAM_TYPE_VALUE)
                 .addParameter(HoroscopeConstants.REQUEST_PARAM_SPLIT, HoroscopeConstants.REQUEST_PARAM_SPLIT_VALUE)
                 .addParameter(HoroscopeConstants.REQUEST_PARAM_LOCALE, HoroscopeConstants.REQUEST_PARAM_SPLIT_VALUE)
                 .addParameter(HoroscopeConstants.REQUEST_PARAM_ZODIAC, String.valueOf(zodiacValue))
                 .addParameter(HoroscopeConstants.REQUEST_PARAM_LOCALE, locale)
                 .addParameter(HoroscopeConstants.REQUEST_PARAM_API_KEY, apiKey)
-                .addParameter(HoroscopeConstants.REQUEST_PARAM_SHOW_SAME, HoroscopeConstants.REQUEST_PARAM_SHOW_SAME_VALUE)
-                .addParameter(HoroscopeConstants.REQUEST_PARAM_DAILY_DATE, Utilities.getLocalDateInString())
-                .build();
-
-        return null;
+                .addParameter(HoroscopeConstants.REQUEST_PARAM_SHOW_SAME,
+                              HoroscopeConstants.REQUEST_PARAM_SHOW_SAME_VALUE)
+                .addParameter(HoroscopeConstants.REQUEST_PARAM_DAILY_DATE, Utilities.getLocalDateInString()).build();
+        httpGet.setUri(uri);
+        String response = callApi(baseURL, httpGet);
+        return JsonConverter.fromJson(response, APIResponse.class);
     }
 
     /**
      * @param apiUrl
      * @return
      */
-    private String callApi(String apiUrl, HttpGet request) throws IOException, ParseException {
+    private String callApi (String apiUrl, HttpGet request) throws IOException, ParseException {
         try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
-
             try (CloseableHttpResponse response = httpClient.execute(request)) {
-                if (response.getStatusLine().getStatusCode() == 200) {
+                int statusCode = response.getCode();
+                if (statusCode == HttpStatus.SC_OK) {
                     return EntityUtils.toString(response.getEntity());
                 }
             }

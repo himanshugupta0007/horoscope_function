@@ -11,7 +11,7 @@ import com.google.gson.GsonBuilder;
  */
 public class JsonConverter {
 
-    Gson gson = new GsonBuilder().create();
+   static Gson gson = new GsonBuilder().create();
 
     /**
      * Method to convert Object from JSON
@@ -21,7 +21,7 @@ public class JsonConverter {
      * @param <T>
      * @return
      */
-    public <T> T fromJson (String json, Class<T> classOfT) {
+    public static <T> T fromJson (String json, Class<T> classOfT) {
         return gson.fromJson(json, classOfT);
     }
 
@@ -31,7 +31,7 @@ public class JsonConverter {
      * @param src
      * @return
      */
-    public String toJson (Object src) {
+    public static String toJson (Object src) {
         return gson.toJson(src);
     }
 

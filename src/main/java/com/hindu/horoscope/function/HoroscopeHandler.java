@@ -15,23 +15,25 @@ import java.time.LocalDateTime;
  */
 public class HoroscopeHandler implements RequestHandler {
 
+    ReadHoroscopeDataServiceImpl readHoroscopeDataService = new ReadHoroscopeDataServiceImpl();
+
     /**
      * @param input   The Lambda Function input
      * @param context The Lambda execution environment context object.
      * @return
      */
     @Override
-    public String handleRequest(Object input, Context context) {
+    public String handleRequest (Object input, Context context) {
         String responseMessage = null;
         LambdaLogger logger = context.getLogger();
         try {
-            logger.log("Starting the Horoscope Function at:" + LocalDateTime.now()+ "\n");
+            logger.log("Starting the Horoscope Function at:" + LocalDateTime.now() + "\n");
             logger.log("Initializing the Environment Variables\n");
-            responseMessage = ReadHoroscopeDataServiceImpl.readAndSaveZodiacPredictions(logger) ? "Data Saved in DynamoDB Successfully" :
-                    "Data not saved. Please check the logs for troubleshooting";
-            logger.log("Completed the Horoscope Function at:" + LocalDateTime.now()+ "\n");
+            responseMessage = readHoroscopeDataService.readAndSaveZodiacPredictions(
+                    logger) ? "Data Saved in DynamoDB Successfully" : "Data not saved. Please check the logs for troubleshooting";
+            logger.log("Completed the Horoscope Function at:" + LocalDateTime.now() + "\n");
         } catch (Exception ex) {
-            logger.log("Exceptions Occurred while Reading and Saving Predictions Data" + ex+ "\n");
+            logger.log("Exceptions Occurred while Reading and Saving Predictions Data" + ex + "\n");
             responseMessage = ex.getMessage();
         }
         return responseMessage;
