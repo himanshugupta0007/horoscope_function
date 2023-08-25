@@ -26,9 +26,9 @@ public class Utilities {
      *
      * @return
      */
-    public static String getLocalDateInString() {
-        LocalDate currentDate = LocalDate.now();
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+    public static String getLocalDateInString(String dateFormatterString) {
+        LocalDate currentDate = LocalDate.now().plusDays(1l);
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern(dateFormatterString);
         return currentDate.format(formatter);
     }
 
@@ -39,7 +39,7 @@ public class Utilities {
      * @param year
      * @return
      */
-    public String getDatesInStringForWeek(int weekNumber, int year) {
+    public static String getDatesInStringForWeek(int weekNumber, int year) {
         log.info("Fetching Start Date and End Date for Week {} and Year {}", weekNumber, year);
         LocalDate startDate = getStartDateOfWeek(year, weekNumber);
         LocalDate endDate = getEndDateOfWeek(year, weekNumber);
@@ -54,7 +54,7 @@ public class Utilities {
      * @param weekNumber
      * @return
      */
-    private LocalDate getStartDateOfWeek(int year, int weekNumber) {
+    private static LocalDate getStartDateOfWeek(int year, int weekNumber) {
         TemporalField fieldISO = WeekFields.of(Locale.getDefault()).dayOfWeek();
         return LocalDate.ofYearDay(year, 1).with(fieldISO, 1).plusWeeks(weekNumber - 1);
     }
@@ -66,7 +66,7 @@ public class Utilities {
      * @param weekNumber
      * @return
      */
-    private LocalDate getEndDateOfWeek(int year, int weekNumber) {
+    private static LocalDate getEndDateOfWeek(int year, int weekNumber) {
         TemporalField fieldISO = WeekFields.of(Locale.getDefault()).dayOfWeek();
         return LocalDate.ofYearDay(year, 1).with(fieldISO, 1).plusWeeks(weekNumber).minusDays(1);
     }
@@ -79,8 +79,11 @@ public class Utilities {
      */
     public static List<String> getListFromVariables(String values) {
         log.info("Creating List of Environment Values");
-        if (!StringUtils.isEmpty(values) && values.contains(",")) {
-            return Arrays.asList(values.split(","));
+        if (!StringUtils.isEmpty(values)) {
+            if (values.contains(","))
+                return Arrays.asList(values.split(","));
+            else
+                return Collections.singletonList(values);
         }
         return Collections.emptyList();
     }

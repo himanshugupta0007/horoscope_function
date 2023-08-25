@@ -1,11 +1,16 @@
 package com.hindu.horoscope.service;
 
 import com.amazonaws.services.lambda.runtime.LambdaLogger;
-import com.hindu.horoscope.helper.HoroscopeConstants;
-import com.hindu.horoscope.helper.JsonConverter;
-import com.hindu.horoscope.helper.Utilities;
-import com.hindu.horoscope.helper.ZodiacEnum;
+import com.hindu.horoscope.helper.*;
 import com.hindu.horoscope.model.externalResponse.APIResponse;
+import com.hindu.horoscope.model.externalResponse.BotResponse;
+import com.hindu.horoscope.model.externalResponse.CategoryResponse;
+import com.hindu.horoscope.model.externalResponse.PredictionResponse;
+import com.hindu.horoscope.model.response.PredictionCategory;
+import com.hindu.horoscope.model.response.TodayPrediction;
+import com.hindu.horoscope.model.response.WeeklyPrediction;
+import com.hindu.horoscope.model.response.ZodiacModel;
+import com.sun.jndi.toolkit.url.Uri;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.hc.client5.http.classic.methods.HttpGet;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
@@ -20,7 +25,9 @@ import software.amazon.awssdk.utils.CollectionUtils;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.List;
+import java.time.LocalDate;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Implementation of Reading Horoscope Data
@@ -32,70 +39,219 @@ import java.util.List;
 public class ReadHoroscopeDataServiceImpl {
 
 
+    // Constants for endpoints and environment variables
+    private static final String DAILY_PREDICTION_ENDPOINT = HoroscopeConstants.DAILY_PREDICTION_ENDPOINT;
+    private static final String WEEKLY_PREDICTION_ENDPOINT = HoroscopeConstants.WEEKLY_PREDICTION_ENDPOINT;
+
     /**
      * This method is responsible for Reading the Predictions for Zodiacs and Save in the Dynamo DB
      *
-     * @return
+     * @return true if successful, false otherwise
      */
-    public boolean readAndSaveZodiacPredictions (LambdaLogger logger) {
-        logger.log("Reading Environment Variables" + "\n");
+    public boolean readAndSaveZodiacPredictions(LambdaLogger logger) {
+        logger.log("Reading Environment Variables\n");
         List<String> locales =
                 Utilities.getListFromVariables(System.getenv(HoroscopeConstants.ENVIRONMENT_VARIABLE_LOCALES));
+
         if (CollectionUtils.isNullOrEmpty(locales)) {
-            logger.log("Empty Locales. Please check the system settings" + "\n");
-        } else {
-            locales.forEach(locale -> {
-                logger.log("Starting Reading and Saving Data for Locale: " + locale + "\n");
-                String apiKey = System.getenv(HoroscopeConstants.ENVIRONMENT_VARIABLE_API_KEY);
-                String baseURL = System.getenv(HoroscopeConstants.ENVIRONMENT_VARIABLE_BASE_URL);
-                for (ZodiacEnum zodiacEnum : ZodiacEnum.values()) {
-                    try {
-                        logger.log("Reading Predictions for Zodiac: " + zodiacEnum.getName() + "for Locale: " + locale +
-                                           "\n");
-                        APIResponse dailyResponse =
-                                fetchDailyPredictionForZodiac(zodiacEnum.getValue(), apiKey, baseURL, locale);
-                    } catch (Exception ex) {
-                        logger.log("Exception Occurred while reading Zodiac Data" + ex);
-                        break;
-                    }
-                }
-            });
+            logger.log("Empty Locales. Please check the system settings\n");
+            throw new RuntimeException("Empty Locales. Please check the system settings");
         }
-        return false;
+
+        List<ZodiacModel> zodiacModelList = new ArrayList<>();
+        String apiKey = System.getenv(HoroscopeConstants.ENVIRONMENT_VARIABLE_API_KEY);
+        String baseURL = System.getenv(HoroscopeConstants.ENVIRONMENT_VARIABLE_BASE_URL);
+
+        for (String locale : locales) {
+            logger.log("Starting Reading and Saving Data for Locale: " + locale + "\n");
+            for (ZodiacEnum zodiacEnum : ZodiacEnum.values()) {
+                try {
+                    logger.log("Reading Predictions for Zodiac: " + zodiacEnum.getName() + " for Locale: " + locale +
+                            "\n");
+                    APIResponse dailyResponse =
+                            fetchPredictionForZodiac(DAILY_PREDICTION_ENDPOINT, zodiacEnum.getValue(), apiKey, baseURL, locale, true);
+                    APIResponse weeklyResponse =
+                            fetchPredictionForZodiac(WEEKLY_PREDICTION_ENDPOINT, zodiacEnum.getValue(), apiKey, baseURL, locale, false);
+                    updateZodiacData(zodiacModelList, dailyResponse, weeklyResponse, zodiacEnum, locale);
+                } catch (Exception ex) {
+                    logger.log("Exception Occurred while reading Zodiac Data" + ex + "\n");
+                    throw new RuntimeException("Exception Occurred while reading Zodiac Data" + ex);
+                }
+            }
+        }
+        System.out.println(zodiacModelList);
+        return true;
     }
 
     /**
-     * This method fetches the Daily Prediction for provided Zodiac Value
+     * This method creates the Zodiac Model and adds the same in List to be saved in Dynamo DB
      *
+     * @param zodiacModelList
+     * @param dailyResponse
+     * @param weeklyResponse
+     * @param zodiacEnum
+     * @param locale
+     */
+    private void updateZodiacData(List<ZodiacModel> zodiacModelList, APIResponse dailyResponse,
+                                  APIResponse weeklyResponse, ZodiacEnum zodiacEnum, String locale) {
+        if (Objects.nonNull(dailyResponse) && Objects.nonNull(weeklyResponse)) {
+            ZodiacModel zodiacModel = new ZodiacModel();
+            zodiacModel.setZodiac(zodiacEnum.getName());
+            zodiacModel.setLocale(locale);
+            zodiacModel.setZodiacId(zodiacEnum.getValue());
+            zodiacModel.setDate(Utilities.getLocalDateInString("yyyy-MM-dd"));
+            zodiacModel.setTodayPrediction(getTodaysPrediction(dailyResponse));
+            zodiacModel.setWeeklyPrediction(getWeeklyPredictionResponse(weeklyResponse));
+            zodiacModelList.add(zodiacModel);
+            return;
+        }
+        throw new RuntimeException();
+    }
+
+    /**
+     * Returns the Weekly's Prediction
+     *
+     * @param weeklyPredictionResponse
+     * @return
+     */
+    private WeeklyPrediction getWeeklyPredictionResponse(APIResponse weeklyPredictionResponse) {
+        WeeklyPrediction weeklyPrediction = new WeeklyPrediction();
+        PredictionResponse predictionResponse = weeklyPredictionResponse.getResponse();
+        weeklyPrediction.setWeek(Utilities.getDatesInStringForWeek(predictionResponse.getWeek_number(), LocalDate.now()
+                .getYear()));
+        weeklyPrediction.setLuckyColor(predictionResponse.lucky_color_code);
+        weeklyPrediction.setLuckyNumber(predictionResponse.lucky_number.stream()
+                .map(String::valueOf).collect(Collectors.joining()));
+        weeklyPrediction.setPredictions(addPredictionCategories(predictionResponse.getBot_response()));
+        return weeklyPrediction;
+    }
+
+    /**
+     * Returns the Today's Prediction
+     *
+     * @param dailyResponse
+     * @return
+     */
+    private TodayPrediction getTodaysPrediction(APIResponse dailyResponse) {
+        TodayPrediction todayPrediction = new TodayPrediction();
+        PredictionResponse predictionResponse = dailyResponse.getResponse();
+        todayPrediction.setDate(Utilities.getLocalDateInString("dd/MM/yyyy"));
+        todayPrediction.setLuckyColor(predictionResponse.lucky_color_code);
+        todayPrediction.setLuckyNumber(predictionResponse.lucky_number.stream()
+                .map(String::valueOf).collect(Collectors.joining()));
+        todayPrediction.setPredictions(addPredictionCategories(predictionResponse.getBot_response()));
+        return todayPrediction;
+    }
+
+    /**
+     * Adds Prediction Response Attributes
+     *
+     * @param bot_response
+     * @return
+     */
+    private List<PredictionCategory> addPredictionCategories(BotResponse bot_response) {
+        List<PredictionCategory> predictionCategories = new ArrayList<>();
+        if (Objects.nonNull(bot_response.getPhysique())) {
+            predictionCategories.add(createPredictionCategoryFromBotResponse(bot_response.getPhysique(), HoroscopeAttributesEnum.PHYSIQUE));
+        }
+        predictionCategories.add(createPredictionCategoryFromBotResponse(bot_response.getCareer(), HoroscopeAttributesEnum.CAREER));
+        predictionCategories.add(createPredictionCategoryFromBotResponse(bot_response.getFamily(), HoroscopeAttributesEnum.FAMILY));
+        predictionCategories.add(createPredictionCategoryFromBotResponse(bot_response.getHealth(), HoroscopeAttributesEnum.HEALTH));
+        predictionCategories.add(createPredictionCategoryFromBotResponse(bot_response.getFinances(), HoroscopeAttributesEnum.FINANCES));
+        predictionCategories.add(createPredictionCategoryFromBotResponse(bot_response.getStatus(), HoroscopeAttributesEnum.STATUS));
+        predictionCategories.add(createPredictionCategoryFromBotResponse(bot_response.getRelationship(), HoroscopeAttributesEnum.RELATIONSHIP));
+        predictionCategories.add(createPredictionCategoryFromBotResponse(bot_response.getTravel(), HoroscopeAttributesEnum.TRAVEL));
+        predictionCategories.add(createPredictionCategoryFromBotResponse(bot_response.getTotal_score(), HoroscopeAttributesEnum.OVERALL));
+        return predictionCategories;
+    }
+
+    /**
+     * Creates the Prediction Category
+     *
+     * @param botResponse
+     * @param horoscopeAttribute
+     * @return
+     */
+    private PredictionCategory createPredictionCategoryFromBotResponse(CategoryResponse botResponse,
+                                                                       HoroscopeAttributesEnum horoscopeAttribute) {
+        PredictionCategory predictionCategory = new PredictionCategory();
+        predictionCategory.setType(horoscopeAttribute.getName());
+        predictionCategory.setData(botResponse.getSplit_response());
+        predictionCategory.setPercentage(String.valueOf(botResponse.getScore()));
+        predictionCategory.setColor(horoscopeAttribute.getColor());
+        return predictionCategory;
+    }
+
+
+    /**
+     * This method fetches the Prediction for the provided Zodiac and prediction type
+     *
+     * @param endpoint
      * @param zodiacValue
      * @param apiKey
      * @param baseURL
      * @param locale
+     * @param isDaily
      * @return
+     * @throws URISyntaxException
+     * @throws IOException
+     * @throws ParseException
      */
-    private APIResponse fetchDailyPredictionForZodiac (int zodiacValue, String apiKey, String baseURL,
-            String locale) throws URISyntaxException, IOException, ParseException {
-        HttpGet httpGet = new HttpGet(baseURL);
-        URI uri = new URIBuilder(httpGet.getUri()).addParameter(HoroscopeConstants.REQUEST_PARAM_TYPE,
-                                                                HoroscopeConstants.REQUEST_PARAM_TYPE_VALUE)
-                .addParameter(HoroscopeConstants.REQUEST_PARAM_SPLIT, HoroscopeConstants.REQUEST_PARAM_SPLIT_VALUE)
-                .addParameter(HoroscopeConstants.REQUEST_PARAM_LOCALE, HoroscopeConstants.REQUEST_PARAM_SPLIT_VALUE)
-                .addParameter(HoroscopeConstants.REQUEST_PARAM_ZODIAC, String.valueOf(zodiacValue))
-                .addParameter(HoroscopeConstants.REQUEST_PARAM_LOCALE, locale)
-                .addParameter(HoroscopeConstants.REQUEST_PARAM_API_KEY, apiKey)
-                .addParameter(HoroscopeConstants.REQUEST_PARAM_SHOW_SAME,
-                              HoroscopeConstants.REQUEST_PARAM_SHOW_SAME_VALUE)
-                .addParameter(HoroscopeConstants.REQUEST_PARAM_DAILY_DATE, Utilities.getLocalDateInString()).build();
+    private APIResponse fetchPredictionForZodiac(String endpoint, int zodiacValue, String apiKey, String baseURL,
+                                                 String locale, boolean isDaily)
+            throws URISyntaxException, IOException, ParseException {
+        HttpGet httpGet = new HttpGet(baseURL + endpoint);
+        URI uri = buildApiUri(httpGet.getUri(), zodiacValue, apiKey, locale, isDaily);
         httpGet.setUri(uri);
-        String response = callApi(baseURL, httpGet);
-        return JsonConverter.fromJson(response, APIResponse.class);
+        String response = callApi(httpGet);
+        return Objects.nonNull(response) ? JsonConverter.fromJson(response, APIResponse.class) : null;
     }
 
+
     /**
-     * @param apiUrl
+     * Builds the API URI with required parameters
+     *
+     * @param baseUri
+     * @param zodiacValue
+     * @param apiKey
+     * @param locale
+     * @param isDaily
      * @return
+     * @throws URISyntaxException
      */
-    private String callApi (String apiUrl, HttpGet request) throws IOException, ParseException {
+    private URI buildApiUri(URI baseUri, int zodiacValue, String apiKey, String locale, boolean isDaily) throws
+                                                                                                         URISyntaxException {
+        String predictionAttribute;
+        String predictionValue;
+
+        if (isDaily) {
+            predictionAttribute = HoroscopeConstants.REQUEST_PARAM_DAILY_DATE;
+            predictionValue = Utilities.getLocalDateInString("dd/MM/yyyy");
+        } else {
+            predictionAttribute = HoroscopeConstants.REQUEST_PARAM_WEEK;
+            predictionValue = HoroscopeConstants.REQUEST_PARAM_WEEK_VALUE;
+        }
+        return new URIBuilder(baseUri)
+                .addParameter(HoroscopeConstants.REQUEST_PARAM_TYPE, HoroscopeConstants.REQUEST_PARAM_TYPE_VALUE)
+                .addParameter(HoroscopeConstants.REQUEST_PARAM_SPLIT, HoroscopeConstants.REQUEST_PARAM_SPLIT_VALUE)
+                .addParameter(HoroscopeConstants.REQUEST_PARAM_LOCALE, locale)
+                .addParameter(HoroscopeConstants.REQUEST_PARAM_ZODIAC, String.valueOf(zodiacValue))
+                .addParameter(HoroscopeConstants.REQUEST_PARAM_API_KEY, apiKey)
+                .addParameter(HoroscopeConstants.REQUEST_PARAM_SHOW_SAME, HoroscopeConstants.REQUEST_PARAM_SHOW_SAME_VALUE)
+                .addParameter(predictionAttribute, predictionValue)
+                .build();
+    }
+
+
+    /**
+     * Calls the API
+     *
+     * @param request
+     * @return
+     * @throws IOException
+     * @throws ParseException
+     */
+    private String callApi(HttpGet request) throws IOException, ParseException {
         try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
             try (CloseableHttpResponse response = httpClient.execute(request)) {
                 int statusCode = response.getCode();

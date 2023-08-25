@@ -32,5 +32,8 @@ public class HoroscopeConstants {
     public static final String REQUEST_PARAM_LOCALE = "lang";
     public static final String REQUEST_PARAM_API_KEY = "api_key";
 
+    public static final String DAILY_PREDICTION_ENDPOINT = "/daily-moon";
+    public static final String WEEKLY_PREDICTION_ENDPOINT = "/weekly-moon";
+
 
 }
