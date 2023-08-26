@@ -7,7 +7,7 @@ Resources:
     Properties:
       CodeUri: .
       Description: ''
-      MemorySize: 128
+      MemorySize: 512
       Timeout: 60
       Handler: 'com.hindu.horoscope.function.HoroscopeHandler::handleRequest'
       Runtime: java8
@@ -23,6 +23,8 @@ Resources:
           API_KEY: '1234'
           BASE_URL: '1123123'
           HOROSCOPE_LOCALES: 'en,hi'
+          TABLE_NAME: zodiac_model
+          QUERY_GSI: DateGSI
       Role: >-
         arn:aws:iam::450848632298:role/service-role/testLambdaCloudWatchEvent-role-9b3johvi
       PackageType: Zip

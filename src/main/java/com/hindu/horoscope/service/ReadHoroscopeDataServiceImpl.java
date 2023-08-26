@@ -10,7 +10,6 @@ import com.hindu.horoscope.model.response.PredictionCategory;
 import com.hindu.horoscope.model.response.TodayPrediction;
 import com.hindu.horoscope.model.response.WeeklyPrediction;
 import com.hindu.horoscope.model.response.ZodiacModel;
-import com.sun.jndi.toolkit.url.Uri;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.hc.client5.http.classic.methods.HttpGet;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
@@ -20,6 +19,14 @@ import org.apache.hc.core5.http.HttpStatus;
 import org.apache.hc.core5.http.ParseException;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.apache.hc.core5.net.URIBuilder;
+import software.amazon.awssdk.auth.credentials.ProfileCredentialsProvider;
+import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
+import software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable;
+import software.amazon.awssdk.enhanced.dynamodb.TableSchema;
+import software.amazon.awssdk.enhanced.dynamodb.model.PutItemEnhancedRequest;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
+import software.amazon.awssdk.services.dynamodb.model.*;
 import software.amazon.awssdk.utils.CollectionUtils;
 
 import java.io.IOException;
@@ -38,10 +45,10 @@ import java.util.stream.Collectors;
 @Slf4j
 public class ReadHoroscopeDataServiceImpl {
 
-
     // Constants for endpoints and environment variables
     private static final String DAILY_PREDICTION_ENDPOINT = HoroscopeConstants.DAILY_PREDICTION_ENDPOINT;
     private static final String WEEKLY_PREDICTION_ENDPOINT = HoroscopeConstants.WEEKLY_PREDICTION_ENDPOINT;
+    private static final String DATE_FIELD_NAME = "date";
 
     /**
      * This method is responsible for Reading the Predictions for Zodiacs and Save in the Dynamo DB
@@ -49,7 +56,16 @@ public class ReadHoroscopeDataServiceImpl {
      * @return true if successful, false otherwise
      */
     public boolean readAndSaveZodiacPredictions(LambdaLogger logger) {
+        logger.log("Checking and deleting is any existing data is present for date:" +
+                Utilities.getLocalDateInString("yyyy-MM-dd") + "\n");
+        String dynamoDBTableName =
+                System.getenv(HoroscopeConstants.ENVIRONMENT_VARIABLE_DYNAMO_DB_TABLE_NAME);
+        String queryGSI = System.getenv(HoroscopeConstants.ENVIRONMENT_VARIABLE_QUERY_GSI);
+        String localDate = Utilities.getLocalDateInString("yyyy-MM-dd");
+        DynamoDbClient dynamoDbClient = getDynamoDB();
+        checkDataIsPresent(dynamoDBTableName, queryGSI, localDate, dynamoDbClient, logger);
         logger.log("Reading Environment Variables\n");
+
         List<String> locales =
                 Utilities.getListFromVariables(System.getenv(HoroscopeConstants.ENVIRONMENT_VARIABLE_LOCALES));
 
@@ -79,8 +95,80 @@ public class ReadHoroscopeDataServiceImpl {
                 }
             }
         }
-        System.out.println(zodiacModelList);
+        if (!CollectionUtils.isNullOrEmpty(zodiacModelList) &&
+                zodiacModelList.size() == (ZodiacEnum.values().length * locales.size())) {
+            saveDataToDynamoDB(dynamoDbClient, dynamoDBTableName, localDate, zodiacModelList);
+        }
         return true;
+    }
+
+    /**
+     * This method saves data to dynamo db table
+     *
+     * @param dynamoDbClient
+     * @param dynamoDBTableName
+     * @param localDate
+     * @param zodiacModelList
+     */
+    private void saveDataToDynamoDB(DynamoDbClient dynamoDbClient, String dynamoDBTableName, String localDate,
+                                    List<ZodiacModel> zodiacModelList) {
+        DynamoDbEnhancedClient enhancedClient = DynamoDbEnhancedClient.builder()
+                .dynamoDbClient(dynamoDbClient)
+                .build();
+        DynamoDbTable<ZodiacModel> zodiacDynamoDBTable =
+                enhancedClient.table(dynamoDBTableName, TableSchema.fromBean(ZodiacModel.class));
+        zodiacModelList.forEach(zodiacModel -> {
+            zodiacDynamoDBTable.putItem(zodiacModel);
+        });
+
+
+        System.out.println("");
+    }
+
+    /**
+     * Check if data available, delete the same
+     */
+    private void checkDataIsPresent(String dynamoDBTableName, String queryGSI, String localDate,
+                                    DynamoDbClient dynamoDbClient, LambdaLogger logger) {
+        Map<String, String> expressionAttributesNames = new HashMap<>();
+        expressionAttributesNames.put("#zodiacDate", "zodiacDate");
+        Map<String, AttributeValue> expressionAttributeValues = new HashMap<>();
+        expressionAttributeValues.put(":dateValue", AttributeValue.builder().s(localDate).build());
+
+        QueryRequest request = QueryRequest.builder()
+                .tableName(dynamoDBTableName)
+                .indexName(queryGSI)
+                .keyConditionExpression("#zodiacDate = :dateValue")
+                .expressionAttributeNames(expressionAttributesNames)
+                .expressionAttributeValues(expressionAttributeValues)
+                .build();
+
+        QueryResponse queryResponse = dynamoDbClient.query(request);
+        if (!CollectionUtils.isNullOrEmpty(queryResponse.items())) {
+            logger.log("Found " + queryResponse.items().size() + "records for Date: " + localDate + "\n");
+            queryResponse.items().forEach(response -> {
+                HashMap<String, AttributeValue> keyToDelete = new HashMap<>();
+                keyToDelete.put("id", AttributeValue.builder()
+                        .s(response.get("id").s())
+                        .build());
+                DeleteItemRequest deleteItemRequest = DeleteItemRequest.builder().tableName(dynamoDBTableName).
+                        key(keyToDelete).build();
+                logger.log("Deleting Record with ID: " + response.get("id").s() + "\n");
+                DeleteItemResponse delResponse = dynamoDbClient.deleteItem(deleteItemRequest);
+                logger.log("Deleted SuccessFully");
+            });
+        }
+    }
+
+    /**
+     * returns the DynamoDB Client
+     *
+     * @return
+     */
+    private DynamoDbClient getDynamoDB() {
+        return DynamoDbClient.builder()
+                .region(Region.AP_SOUTH_1)
+                .build();
     }
 
     /**
@@ -96,10 +184,11 @@ public class ReadHoroscopeDataServiceImpl {
                                   APIResponse weeklyResponse, ZodiacEnum zodiacEnum, String locale) {
         if (Objects.nonNull(dailyResponse) && Objects.nonNull(weeklyResponse)) {
             ZodiacModel zodiacModel = new ZodiacModel();
+            zodiacModel.setId(UUID.randomUUID().toString());
             zodiacModel.setZodiac(zodiacEnum.getName());
             zodiacModel.setLocale(locale);
             zodiacModel.setZodiacId(zodiacEnum.getValue());
-            zodiacModel.setDate(Utilities.getLocalDateInString("yyyy-MM-dd"));
+            zodiacModel.setZodiacDate(Utilities.getLocalDateInString("yyyy-MM-dd"));
             zodiacModel.setTodayPrediction(getTodaysPrediction(dailyResponse));
             zodiacModel.setWeeklyPrediction(getWeeklyPredictionResponse(weeklyResponse));
             zodiacModelList.add(zodiacModel);
@@ -121,7 +210,7 @@ public class ReadHoroscopeDataServiceImpl {
                 .getYear()));
         weeklyPrediction.setLuckyColor(predictionResponse.lucky_color_code);
         weeklyPrediction.setLuckyNumber(predictionResponse.lucky_number.stream()
-                .map(String::valueOf).collect(Collectors.joining()));
+                .map(String::valueOf).collect(Collectors.joining(",")));
         weeklyPrediction.setPredictions(addPredictionCategories(predictionResponse.getBot_response()));
         return weeklyPrediction;
     }
@@ -138,7 +227,7 @@ public class ReadHoroscopeDataServiceImpl {
         todayPrediction.setDate(Utilities.getLocalDateInString("dd/MM/yyyy"));
         todayPrediction.setLuckyColor(predictionResponse.lucky_color_code);
         todayPrediction.setLuckyNumber(predictionResponse.lucky_number.stream()
-                .map(String::valueOf).collect(Collectors.joining()));
+                .map(String::valueOf).collect(Collectors.joining(",")));
         todayPrediction.setPredictions(addPredictionCategories(predictionResponse.getBot_response()));
         return todayPrediction;
     }
@@ -205,6 +294,8 @@ public class ReadHoroscopeDataServiceImpl {
         httpGet.setUri(uri);
         String response = callApi(httpGet);
         return Objects.nonNull(response) ? JsonConverter.fromJson(response, APIResponse.class) : null;
+//        return isDaily ? JsonConverter.fromJson(HoroscopeConstants.DAILY_RESPONSE, APIResponse.class) :
+//                JsonConverter.fromJson(HoroscopeConstants.WEEKLY_MOCK_RESPONSE, APIResponse.class);
     }
 
 
