@@ -15,6 +15,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+/**
+ * Prediction Category Convertor to convert the {@link PredictionCategory} to AttributeValue
+ *
+ * @author Himanshu Gupta
+ * @since 26 Aug 2023
+ */
 public class PredictionCategoryConverter implements AttributeConverter<List<PredictionCategory>> {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 

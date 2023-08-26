@@ -45,10 +45,8 @@ import java.util.stream.Collectors;
 @Slf4j
 public class ReadHoroscopeDataServiceImpl {
 
-    // Constants for endpoints and environment variables
     private static final String DAILY_PREDICTION_ENDPOINT = HoroscopeConstants.DAILY_PREDICTION_ENDPOINT;
     private static final String WEEKLY_PREDICTION_ENDPOINT = HoroscopeConstants.WEEKLY_PREDICTION_ENDPOINT;
-    private static final String DATE_FIELD_NAME = "date";
 
     /**
      * This method is responsible for Reading the Predictions for Zodiacs and Save in the Dynamo DB
@@ -97,7 +95,8 @@ public class ReadHoroscopeDataServiceImpl {
         }
         if (!CollectionUtils.isNullOrEmpty(zodiacModelList) &&
                 zodiacModelList.size() == (ZodiacEnum.values().length * locales.size())) {
-            saveDataToDynamoDB(dynamoDbClient, dynamoDBTableName, localDate, zodiacModelList);
+            logger.log("Saving Zodiac data in DB");
+            saveDataToDynamoDB(dynamoDbClient, dynamoDBTableName, zodiacModelList);
         }
         return true;
     }
@@ -107,10 +106,9 @@ public class ReadHoroscopeDataServiceImpl {
      *
      * @param dynamoDbClient
      * @param dynamoDBTableName
-     * @param localDate
      * @param zodiacModelList
      */
-    private void saveDataToDynamoDB(DynamoDbClient dynamoDbClient, String dynamoDBTableName, String localDate,
+    private void saveDataToDynamoDB(DynamoDbClient dynamoDbClient, String dynamoDBTableName,
                                     List<ZodiacModel> zodiacModelList) {
         DynamoDbEnhancedClient enhancedClient = DynamoDbEnhancedClient.builder()
                 .dynamoDbClient(dynamoDbClient)
@@ -120,9 +118,6 @@ public class ReadHoroscopeDataServiceImpl {
         zodiacModelList.forEach(zodiacModel -> {
             zodiacDynamoDBTable.putItem(zodiacModel);
         });
-
-
-        System.out.println("");
     }
 
     /**
