@@ -23,18 +23,19 @@ public class HoroscopeHandler implements RequestHandler {
      * @return
      */
     @Override
-    public String handleRequest (Object input, Context context) {
+    public String handleRequest(Object input, Context context) {
         String responseMessage = null;
         LambdaLogger logger = context.getLogger();
         try {
             logger.log("Starting the Horoscope Function at:" + LocalDateTime.now() + "\n");
             logger.log("Initializing the Environment Variables\n");
             responseMessage = readHoroscopeDataService.readAndSaveZodiacPredictions(
-                    logger) ? "Data Saved in DynamoDB Successfully" : "Data not saved. Please check the logs for troubleshooting";
+                    logger) ? "Data Saved in DynamoDB Successfully" :
+                    "Data not saved. Please check the logs for troubleshooting";
             logger.log("Completed the Horoscope Function at:" + LocalDateTime.now() + "\n");
         } catch (Exception ex) {
             logger.log("Exceptions Occurred while Reading and Saving Predictions Data" + ex + "\n");
-            responseMessage = ex.getMessage();
+            throw ex;
         }
         return responseMessage;
     }

@@ -19,15 +19,14 @@ import org.apache.hc.core5.http.HttpStatus;
 import org.apache.hc.core5.http.ParseException;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.apache.hc.core5.net.URIBuilder;
-import software.amazon.awssdk.auth.credentials.ProfileCredentialsProvider;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable;
 import software.amazon.awssdk.enhanced.dynamodb.TableSchema;
-import software.amazon.awssdk.enhanced.dynamodb.model.PutItemEnhancedRequest;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.*;
 import software.amazon.awssdk.utils.CollectionUtils;
+import software.amazon.awssdk.utils.StringUtils;
 
 import java.io.IOException;
 import java.net.URI;
@@ -238,14 +237,37 @@ public class ReadHoroscopeDataServiceImpl {
         if (Objects.nonNull(bot_response.getPhysique())) {
             predictionCategories.add(createPredictionCategoryFromBotResponse(bot_response.getPhysique(), HoroscopeAttributesEnum.PHYSIQUE));
         }
-        predictionCategories.add(createPredictionCategoryFromBotResponse(bot_response.getCareer(), HoroscopeAttributesEnum.CAREER));
-        predictionCategories.add(createPredictionCategoryFromBotResponse(bot_response.getFamily(), HoroscopeAttributesEnum.FAMILY));
-        predictionCategories.add(createPredictionCategoryFromBotResponse(bot_response.getHealth(), HoroscopeAttributesEnum.HEALTH));
-        predictionCategories.add(createPredictionCategoryFromBotResponse(bot_response.getFinances(), HoroscopeAttributesEnum.FINANCES));
-        predictionCategories.add(createPredictionCategoryFromBotResponse(bot_response.getStatus(), HoroscopeAttributesEnum.STATUS));
-        predictionCategories.add(createPredictionCategoryFromBotResponse(bot_response.getRelationship(), HoroscopeAttributesEnum.RELATIONSHIP));
-        predictionCategories.add(createPredictionCategoryFromBotResponse(bot_response.getTravel(), HoroscopeAttributesEnum.TRAVEL));
-        predictionCategories.add(createPredictionCategoryFromBotResponse(bot_response.getTotal_score(), HoroscopeAttributesEnum.OVERALL));
+        if (Objects.nonNull(bot_response.getCareer())) {
+            predictionCategories.add(createPredictionCategoryFromBotResponse(bot_response.getCareer(), HoroscopeAttributesEnum.CAREER));
+        }
+        if (Objects.nonNull(bot_response.getFamily())) {
+            predictionCategories.add(createPredictionCategoryFromBotResponse(bot_response.getFamily(), HoroscopeAttributesEnum.FAMILY));
+        }
+
+        if (Objects.nonNull(bot_response.getHealth())) {
+            predictionCategories.add(createPredictionCategoryFromBotResponse(bot_response.getHealth(), HoroscopeAttributesEnum.HEALTH));
+        }
+
+        if (Objects.nonNull(bot_response.getFinances())) {
+            predictionCategories.add(createPredictionCategoryFromBotResponse(bot_response.getFinances(), HoroscopeAttributesEnum.FINANCES));
+        }
+
+        if (Objects.nonNull(bot_response.getStatus())) {
+            predictionCategories.add(createPredictionCategoryFromBotResponse(bot_response.getStatus(), HoroscopeAttributesEnum.STATUS));
+        }
+
+        if (Objects.nonNull(bot_response.getRelationship())) {
+            predictionCategories.add(createPredictionCategoryFromBotResponse(bot_response.getRelationship(), HoroscopeAttributesEnum.RELATIONSHIP));
+        }
+
+        if (Objects.nonNull(bot_response.getTravel())) {
+            predictionCategories.add(createPredictionCategoryFromBotResponse(bot_response.getTravel(), HoroscopeAttributesEnum.TRAVEL));
+        }
+
+        if (Objects.nonNull(bot_response.getTotal_score())) {
+            predictionCategories.add(createPredictionCategoryFromBotResponse(bot_response.getTotal_score(), HoroscopeAttributesEnum.OVERALL));
+        }
+
         return predictionCategories;
     }
 
@@ -259,10 +281,14 @@ public class ReadHoroscopeDataServiceImpl {
     private PredictionCategory createPredictionCategoryFromBotResponse(CategoryResponse botResponse,
                                                                        HoroscopeAttributesEnum horoscopeAttribute) {
         PredictionCategory predictionCategory = new PredictionCategory();
-        predictionCategory.setType(horoscopeAttribute.getName());
-        predictionCategory.setData(botResponse.getSplit_response());
-        predictionCategory.setPercentage(String.valueOf(botResponse.getScore()));
-        predictionCategory.setColor(horoscopeAttribute.getColor());
+        predictionCategory.setType(
+                StringUtils.isEmpty(horoscopeAttribute.getName()) ? " " : horoscopeAttribute.getName());
+        predictionCategory.setData(
+                StringUtils.isEmpty(botResponse.getSplit_response()) ? "" : botResponse.getSplit_response());
+        predictionCategory.setPercentage(
+                Objects.nonNull(botResponse.getScore()) ? String.valueOf(botResponse.getScore()) : "");
+        predictionCategory.setColor(
+                StringUtils.isEmpty(horoscopeAttribute.getColor()) ? "" : horoscopeAttribute.getColor());
         return predictionCategory;
     }
 
