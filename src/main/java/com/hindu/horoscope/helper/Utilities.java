@@ -43,8 +43,8 @@ public class Utilities {
         log.info("Fetching Start Date and End Date for Week {} and Year {}", weekNumber, year);
         LocalDate startDate = getStartDateOfWeek(year, weekNumber);
         LocalDate endDate = getEndDateOfWeek(year, weekNumber);
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd, MMMM, yyyy", Locale.ENGLISH);
-        return startDate.format(formatter).concat("-").concat(endDate.format(formatter));
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd, MMMM", Locale.ENGLISH);
+        return startDate.format(formatter).concat(" - ").concat(endDate.format(formatter));
     }
 
     /**

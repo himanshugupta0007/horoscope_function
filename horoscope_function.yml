@@ -1,0 +1,44 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: 'AWS::Serverless-2016-10-31'
+Description: An AWS Serverless Specification template describing your function.
+Resources:
+  testLambdaCloudWatchEvent:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      CodeUri: .
+      Description: ''
+      MemorySize: 512
+      Timeout: 60
+      Handler: 'com.hindu.horoscope.function.HoroscopeHandler::handleRequest'
+      Runtime: java8
+      Architectures:
+        - x86_64
+      EventInvokeConfig:
+        MaximumEventAgeInSeconds: 21600
+        MaximumRetryAttempts: 2
+        DestinationConfig:
+          OnSuccess:
+            Destination:
+          OnFailure:
+            Destination: 'arn:aws:sns:ap-south-1:450848632298:FailureNotificationTopic'
+      EphemeralStorage:
+        Size: 512
+      Events:
+        Schedule1:
+          Type: Schedule
+          Properties:
+            Schedule: cron(30 17 * * ? *)
+      Environment:
+        Variables:
+          API_KEY: 9b6cd695-56d0-5732-bc21-f71cce94457d
+          BASE_URL: 'https://api.vedicastroapi.com/v3-json/prediction'
+          HOROSCOPE_LOCALES: 'en,hi'
+          QUERY_GSI: DateGSI
+          TABLE_NAME: ZodiacModel-jcbziwyh2zfibk2meunkxgl3gi-staging
+      Role: >-
+        arn:aws:iam::450848632298:role/service-role/testLambdaCloudWatchEvent-role-9b3johvi
+      RuntimeManagementConfig:
+        UpdateRuntimeOn: Auto
+      SnapStart:
+        ApplyOn: None
+      PackageType: Zip

@@ -10,20 +10,19 @@ import lombok.Getter;
  */
 @Getter
 public enum HoroscopeAttributesEnum {
-    PHYSIQUE("physique", "#D7a8eD"),
-    STATUS("status", "#a8aaed"),
-    FINANCES("finances", "#a8edbe"),
-    RELATIONSHIP("relationship", "#f0bf8b"),
-    CAREER("career", "#e9f08b"),
-    TRAVEL("travel", "#8baef0"),
-    FAMILY("family", "#ee8bf0"),
-    HEALTH("health", "#2069e8"),
-    OVERALL("total_score", "#91f2ef");
-    private final String name;
+    FINANCES("Finances", "धन-सम्पत्ति", "#a8edbe"),
+    RELATIONSHIP("Relationship", "वैवाहिक जीवन", "#f0bf8b"),
+    CAREER("Career", "कैरियर", "#e9f08b"),
+    TRAVEL("Travel", "यात्रा", "#8baef0"),
+    FAMILY("Family", "परिवार", "#ee8bf0"),
+    HEALTH("Health", "स्वास्थ्य", "#2069e8");
+    private final String name_en;
+    private final String name_hi;
     private final String color;
 
-    HoroscopeAttributesEnum(String name, String color) {
+    HoroscopeAttributesEnum(String name_en, String name_hi, String color) {
         this.color = color;
-        this.name = name;
+        this.name_en = name_en;
+        this.name_hi = name_hi;
     }
 }

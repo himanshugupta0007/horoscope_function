@@ -183,8 +183,8 @@ public class ReadHoroscopeDataServiceImpl {
             zodiacModel.setLocale(locale);
             zodiacModel.setZodiacId(zodiacEnum.getValue());
             zodiacModel.setZodiacDate(Utilities.getLocalDateInString("yyyy-MM-dd"));
-            zodiacModel.setTodayPrediction(getTodaysPrediction(dailyResponse));
-            zodiacModel.setWeeklyPrediction(getWeeklyPredictionResponse(weeklyResponse));
+            zodiacModel.setTodayPrediction(getTodaysPrediction(dailyResponse, locale));
+            zodiacModel.setWeeklyPrediction(getWeeklyPredictionResponse(weeklyResponse, locale));
             zodiacModelList.add(zodiacModel);
             return;
         }
@@ -195,9 +195,10 @@ public class ReadHoroscopeDataServiceImpl {
      * Returns the Weekly's Prediction
      *
      * @param weeklyPredictionResponse
+     * @param locale
      * @return
      */
-    private WeeklyPrediction getWeeklyPredictionResponse(APIResponse weeklyPredictionResponse) {
+    private WeeklyPrediction getWeeklyPredictionResponse(APIResponse weeklyPredictionResponse, String locale) {
         WeeklyPrediction weeklyPrediction = new WeeklyPrediction();
         PredictionResponse predictionResponse = weeklyPredictionResponse.getResponse();
         weeklyPrediction.setWeek(Utilities.getDatesInStringForWeek(predictionResponse.getWeek_number(), LocalDate.now()
@@ -205,7 +206,7 @@ public class ReadHoroscopeDataServiceImpl {
         weeklyPrediction.setLuckyColor(predictionResponse.lucky_color_code);
         weeklyPrediction.setLuckyNumber(predictionResponse.lucky_number.stream()
                 .map(String::valueOf).collect(Collectors.joining(",")));
-        weeklyPrediction.setPredictions(addPredictionCategories(predictionResponse.getBot_response()));
+        weeklyPrediction.setPredictions(addPredictionCategories(predictionResponse.getBot_response(), locale));
         return weeklyPrediction;
     }
 
@@ -213,16 +214,17 @@ public class ReadHoroscopeDataServiceImpl {
      * Returns the Today's Prediction
      *
      * @param dailyResponse
+     * @param locale
      * @return
      */
-    private TodayPrediction getTodaysPrediction(APIResponse dailyResponse) {
+    private TodayPrediction getTodaysPrediction(APIResponse dailyResponse, String locale) {
         TodayPrediction todayPrediction = new TodayPrediction();
         PredictionResponse predictionResponse = dailyResponse.getResponse();
         todayPrediction.setDate(Utilities.getLocalDateInString("dd/MM/yyyy"));
         todayPrediction.setLuckyColor(predictionResponse.lucky_color_code);
         todayPrediction.setLuckyNumber(predictionResponse.lucky_number.stream()
                 .map(String::valueOf).collect(Collectors.joining(",")));
-        todayPrediction.setPredictions(addPredictionCategories(predictionResponse.getBot_response()));
+        todayPrediction.setPredictions(addPredictionCategories(predictionResponse.getBot_response(), locale));
         return todayPrediction;
     }
 
@@ -230,44 +232,29 @@ public class ReadHoroscopeDataServiceImpl {
      * Adds Prediction Response Attributes
      *
      * @param bot_response
+     * @param locale
      * @return
      */
-    private List<PredictionCategory> addPredictionCategories(BotResponse bot_response) {
+    private List<PredictionCategory> addPredictionCategories(BotResponse bot_response, String locale) {
         List<PredictionCategory> predictionCategories = new ArrayList<>();
-        if (Objects.nonNull(bot_response.getPhysique())) {
-            predictionCategories.add(createPredictionCategoryFromBotResponse(bot_response.getPhysique(), HoroscopeAttributesEnum.PHYSIQUE));
-        }
         if (Objects.nonNull(bot_response.getCareer())) {
-            predictionCategories.add(createPredictionCategoryFromBotResponse(bot_response.getCareer(), HoroscopeAttributesEnum.CAREER));
+            predictionCategories.add(createPredictionCategoryFromBotResponse(bot_response.getCareer(), HoroscopeAttributesEnum.CAREER, locale));
         }
         if (Objects.nonNull(bot_response.getFamily())) {
-            predictionCategories.add(createPredictionCategoryFromBotResponse(bot_response.getFamily(), HoroscopeAttributesEnum.FAMILY));
+            predictionCategories.add(createPredictionCategoryFromBotResponse(bot_response.getFamily(), HoroscopeAttributesEnum.FAMILY, locale));
         }
-
         if (Objects.nonNull(bot_response.getHealth())) {
-            predictionCategories.add(createPredictionCategoryFromBotResponse(bot_response.getHealth(), HoroscopeAttributesEnum.HEALTH));
+            predictionCategories.add(createPredictionCategoryFromBotResponse(bot_response.getHealth(), HoroscopeAttributesEnum.HEALTH, locale));
         }
-
         if (Objects.nonNull(bot_response.getFinances())) {
-            predictionCategories.add(createPredictionCategoryFromBotResponse(bot_response.getFinances(), HoroscopeAttributesEnum.FINANCES));
+            predictionCategories.add(createPredictionCategoryFromBotResponse(bot_response.getFinances(), HoroscopeAttributesEnum.FINANCES, locale));
         }
-
-        if (Objects.nonNull(bot_response.getStatus())) {
-            predictionCategories.add(createPredictionCategoryFromBotResponse(bot_response.getStatus(), HoroscopeAttributesEnum.STATUS));
-        }
-
         if (Objects.nonNull(bot_response.getRelationship())) {
-            predictionCategories.add(createPredictionCategoryFromBotResponse(bot_response.getRelationship(), HoroscopeAttributesEnum.RELATIONSHIP));
+            predictionCategories.add(createPredictionCategoryFromBotResponse(bot_response.getRelationship(), HoroscopeAttributesEnum.RELATIONSHIP, locale));
         }
-
         if (Objects.nonNull(bot_response.getTravel())) {
-            predictionCategories.add(createPredictionCategoryFromBotResponse(bot_response.getTravel(), HoroscopeAttributesEnum.TRAVEL));
+            predictionCategories.add(createPredictionCategoryFromBotResponse(bot_response.getTravel(), HoroscopeAttributesEnum.TRAVEL, locale));
         }
-
-        if (Objects.nonNull(bot_response.getTotal_score())) {
-            predictionCategories.add(createPredictionCategoryFromBotResponse(bot_response.getTotal_score(), HoroscopeAttributesEnum.OVERALL));
-        }
-
         return predictionCategories;
     }
 
@@ -276,19 +263,19 @@ public class ReadHoroscopeDataServiceImpl {
      *
      * @param botResponse
      * @param horoscopeAttribute
+     * @param locale
      * @return
      */
-    private PredictionCategory createPredictionCategoryFromBotResponse(CategoryResponse botResponse,
-                                                                       HoroscopeAttributesEnum horoscopeAttribute) {
+    private PredictionCategory createPredictionCategoryFromBotResponse(
+            CategoryResponse botResponse, HoroscopeAttributesEnum horoscopeAttribute, String locale) {
         PredictionCategory predictionCategory = new PredictionCategory();
-        predictionCategory.setType(
-                StringUtils.isEmpty(horoscopeAttribute.getName()) ? " " : horoscopeAttribute.getName());
-        predictionCategory.setData(
-                StringUtils.isEmpty(botResponse.getSplit_response()) ? "" : botResponse.getSplit_response());
-        predictionCategory.setPercentage(
-                Objects.nonNull(botResponse.getScore()) ? String.valueOf(botResponse.getScore()) : "");
-        predictionCategory.setColor(
-                StringUtils.isEmpty(horoscopeAttribute.getColor()) ? "" : horoscopeAttribute.getColor());
+        // Determine the type based on the locale
+        String type =
+                (locale.equalsIgnoreCase("en")) ? horoscopeAttribute.getName_en() : horoscopeAttribute.getName_hi();
+        predictionCategory.setType(type != null ? type : "");
+        predictionCategory.setData(botResponse.getSplit_response() != null ? botResponse.getSplit_response() : "");
+        predictionCategory.setPercentage(String.valueOf(botResponse.getScore()));
+        predictionCategory.setColor(horoscopeAttribute.getColor() != null ? horoscopeAttribute.getColor() : "");
         return predictionCategory;
     }
 
