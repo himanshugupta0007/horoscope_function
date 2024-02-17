@@ -26,7 +26,6 @@ import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.*;
 import software.amazon.awssdk.utils.CollectionUtils;
-import software.amazon.awssdk.utils.StringUtils;
 
 import java.io.IOException;
 import java.net.URI;
