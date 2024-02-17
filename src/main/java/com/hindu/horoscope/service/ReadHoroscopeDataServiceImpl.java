@@ -26,7 +26,6 @@ import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.*;
 import software.amazon.awssdk.utils.CollectionUtils;
-import software.amazon.awssdk.utils.StringUtils;
 
 import java.io.IOException;
 import java.net.URI;
@@ -302,8 +301,6 @@ public class ReadHoroscopeDataServiceImpl {
         httpGet.setUri(uri);
         String response = callApi(httpGet);
         return Objects.nonNull(response) ? JsonConverter.fromJson(response, APIResponse.class) : null;
-//        return isDaily ? JsonConverter.fromJson(HoroscopeConstants.DAILY_RESPONSE, APIResponse.class) :
-//                JsonConverter.fromJson(HoroscopeConstants.WEEKLY_MOCK_RESPONSE, APIResponse.class);
     }
 
 
